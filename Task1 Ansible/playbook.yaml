@@ -1,0 +1,64 @@
+- name: Install NGINX and configure it
+  hosts: servers
+  become: yes
+  tasks:
+    - name: apt update and upgrade
+      apt:
+        upgrade: yes
+        update_cache: yes
+ 
+    - name: Install NGINX package
+      apt:
+        name: nginx
+        state: present
+     
+    - name: Copy custom index.html file
+      copy:
+        src: index.html
+        dest: /var/www/html/index.html
+   
+
+    - name: Configure NGINX to listen on port 8090
+      become: true
+      lineinfile:
+        path: /etc/nginx/sites-available/default
+        regexp: '^(?P<group>.*listen.*) 80;'
+        line: '\g<1> 8090;'
+        backrefs: yes
+    
+  handlers:
+    - name: Restart NGINX service
+      become: true
+      service:
+        name: nginx
+        state: restarted
+     
+
+- name: Clone the repository and deploy app
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Clone the repository
+      git:
+        repo: https://github.com/sabreensalama/dockerize-node-app-task.git
+        dest: /app
+        version: main
+
+    
+    - name: install Node.js and npm 
+      apt:
+        name: 
+          - nodejs
+          - npm
+        state: present
+        update_cache: yes
+      
+    - name: install application dependences
+      npm:
+        path: /app
+        state: latest
+
+    - name: run the application
+      command: npm start &
+      args:
+        chdir: /app
